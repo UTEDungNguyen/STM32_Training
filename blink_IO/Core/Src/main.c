@@ -49,12 +49,12 @@
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 /* USER CODE BEGIN PFP */
-
+void Seg7_Print(uint8_t num);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
+unsigned char seg_code[10]={0xC0,0xF9,0xA4,0xB0,0x99,0x92,0x82,0xF8,0x80,0x90};// nối dương chung, mã có sẵn.
 /* USER CODE END 0 */
 
 /**
@@ -117,6 +117,21 @@ int main(void)
 
   NVIC->ISER[0] |= (1<<9); // vô datasheet tìm table 61
 
+  // LED 7 đoạn
+  RCC->AHB1ENR |= (1 << 0);
+  GPIOA->MODER &= ~(0x3FFF);     // clear PA0..PA6
+  GPIOA->MODER |=  (0x1555);     // set to output mode
+
+
+  // Output push-pull
+  GPIOA->OTYPER &= ~(0x7F);
+
+  // Low speed (cho LED, không cần nhanh)
+  GPIOA->OSPEEDR &= ~(0x3FFF);
+
+  // No pull-up, no pull-down
+  GPIOA->PUPDR &= ~(0x3FFF);
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -126,6 +141,11 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+
+	  for(int i = 0; i < 10;i++){
+		  Seg7_Print(i);
+		  HAL_Delay(1000);
+	  }
 //	  GPIOC->BSRR |= (1 << 13);
 //	  HAL_Delay(1000);
 //	  GPIOC->BSRR |= (1 << (13+16));
@@ -208,6 +228,16 @@ void EXTI3_IRQHandler (void) // dùng EXTI3 nên là ye
 	        EXTI->PR |= (1 << 3);  // xóa cờ pending ( xóa là ghi 1 vô bit đó)
 	        GPIOC->ODR ^= (1 << 13); // bật tắt đèn ( dấu mũ là toggle)
 	    }
+}
+
+void Seg7_Print(uint8_t num)
+{
+    uint8_t code = seg_code[num];
+    // Clear 7 bit (PA0..PA6)
+    GPIOA->ODR &= ~(0x7F);
+
+    // Ghi mã segment
+    GPIOA->ODR |= (code & 0x7F);
 }
 /* USER CODE END 4 */
 
