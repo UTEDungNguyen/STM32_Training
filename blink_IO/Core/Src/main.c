@@ -88,18 +88,34 @@ int main(void)
   MX_GPIO_Init();
   /* USER CODE BEGIN 2 */
 
-  //directory
-  RCC->AHB1ENR |= (1 << 2); //provide clk for GPIO c13
+  // cấu hình cho đèn LED
+  RCC->AHB1ENR |= (1 << 2); //provide clk for GPIO c13 (port C)
 
-  GPIOC->MODER |= (1 << (13 * 2)); //LED is C13 means MODER13 in which consist of bit 26 (13 x2)
-
-  GPIOC->OTYPER =  0x0000; //input or output (directory)
-
+  GPIOC->MODER |= (1 << (13 * 2)); //config general output state (01) for LED, MODER13
+  GPIOC->OTYPER =  0x0000; //output type (open drain(0xffff) or push pull(0x0000))
   // initial speed to very high (11)
-  GPIOC->OSPEEDR |= (1 << (13*2));     //bit 26
-  GPIOC->OSPEEDR |= (1 << (13*2 + 1)); //bit 27
+  GPIOC->OSPEEDR |= (3 << (2*13));     //bit 26,27
 
 
+
+  // cấu hình cho nút ấn (interupt)
+  RCC->APB2ENR |= ( 1 << 14); //config clk cho ngoại vi
+  RCC->AHB1ENR |= ( 1 << 1);  // config clk for b3 (port B)
+
+  GPIOB->MODER &= ~( 3 << (2*3)); // input state for button, MODER3
+
+  GPIOB->PUPDR |= ( 1 << 2*3); // điện trở kéo lên.
+  // initial speed to very high (11)
+  GPIOB->OSPEEDR |= ( 3 << 2*3); //bit 6,7
+
+  //cấu hình interupt
+  SYSCFG->EXTICR[0] |= (1 << 4*3); //bật ngắt ngoài cho PB3, 1 là trạng thái 0001 shift qua 3(do PB3) và 4 là vì ô nhớ có 4bit.
+  EXTI->IMR |= (1 << 3); // bật mask cho interupt ở PB3, chỉ là điều kiện cần =))
+
+  EXTI->FTSR |= (1 << 3); // falling edge lên 1 do dùng điện trở kéo lên.
+  EXTI->RTSR &= ~(1 << 3); // rising edge thành 0 ( nếu cả 2 là 11 thì là toggle )
+
+  NVIC->ISER[0] |= (1<<9); // vô datasheet tìm table 61
 
   /* USER CODE END 2 */
 
@@ -110,10 +126,10 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	  GPIOC->BSRR |= (1 << 13);
-	  HAL_Delay(1000);
-	  GPIOC->BSRR |= (1 << 29);
-	  HAL_Delay(1000);
+//	  GPIOC->BSRR |= (1 << 13);
+//	  HAL_Delay(1000);
+//	  GPIOC->BSRR |= (1 << (13+16));
+//	  HAL_Delay(1000);
   }
   /* USER CODE END 3 */
 }
@@ -184,7 +200,15 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-
+void EXTI3_IRQHandler (void) // dùng EXTI3 nên là ye
+{
+    // place your code
+	if (EXTI->PR & (1 << 3))  // 12.3.6 trong datasheet
+	    {
+	        EXTI->PR |= (1 << 3);  // xóa cờ pending ( xóa là ghi 1 vô bit đó)
+	        GPIOC->ODR ^= (1 << 13); // bật tắt đèn ( dấu mũ là toggle)
+	    }
+}
 /* USER CODE END 4 */
 
 /**
