@@ -55,14 +55,14 @@ void Seg7_Print(uint8_t num);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 unsigned char seg_code[10]={0xC0,0xF9,0xA4,0xB0,0x99,0x92,0x82,0xF8,0x80,0x90};// nối dương chung, mã có sẵn.
+unsigned int count = 0;
 /* USER CODE END 0 */
 
 /**
   * @brief  The application entry point.
   * @retval int
   */
-int main(void)
-{
+int main(void){
 
   /* USER CODE BEGIN 1 */
 
@@ -98,7 +98,7 @@ int main(void)
 
 
 
-  // cấu hình cho nút ấn (interupt)
+  // cấu hình cho nút ấn B3 (interupt)
   RCC->APB2ENR |= ( 1 << 14); //config clk cho ngoại vi
   RCC->AHB1ENR |= ( 1 << 1);  // config clk for b3 (port B)
 
@@ -108,7 +108,7 @@ int main(void)
   // initial speed to very high (11)
   GPIOB->OSPEEDR |= ( 3 << 2*3); //bit 6,7
 
-  //cấu hình interupt
+  //cấu hình interupt B3
   SYSCFG->EXTICR[0] |= (1 << 4*3); //bật ngắt ngoài cho PB3, 1 là trạng thái 0001 shift qua 3(do PB3) và 4 là vì ô nhớ có 4bit.
   EXTI->IMR |= (1 << 3); // bật mask cho interupt ở PB3, chỉ là điều kiện cần =))
 
@@ -116,6 +116,27 @@ int main(void)
   EXTI->RTSR &= ~(1 << 3); // rising edge thành 0 ( nếu cả 2 là 11 thì là toggle )
 
   NVIC->ISER[0] |= (1<<9); // vô datasheet tìm table 61
+
+
+  // cấu hình cho nút ấn B2 (interupt)
+  RCC->APB2ENR |= ( 1 << 14); //config clk cho ngoại vi
+  RCC->AHB1ENR |= ( 1 << 1);  // config clk for b3 (port B)
+
+  GPIOB->MODER &= ~( 3 << (2*2)); // input state for button, MODER2
+
+  GPIOB->PUPDR |= ( 1 << 2*2); // điện trở kéo lên.
+  // initial speed to very high (11)
+  GPIOB->OSPEEDR |= ( 3 << 2*2); //bit 6,7
+
+  //cấu hình interupt B2
+  SYSCFG->EXTICR[0] |= (1 << 4*2); //bật ngắt ngoài cho PB3, 1 là trạng thái 0001 shift qua 3(do PB3) và 4 là vì ô nhớ có 4bit.
+  EXTI->IMR |= (1 << 2); // bật mask cho interupt ở PB3, chỉ là điều kiện cần =))
+
+  EXTI->FTSR |= (1 << 2); // falling edge lên 1 do dùng điện trở kéo lên.
+  EXTI->RTSR &= ~(1 << 2); // rising edge thành 0 ( nếu cả 2 là 11 thì là toggle )
+
+  NVIC->ISER[0] |= (1<<8); // vô datasheet tìm table 61
+
 
   // LED 7 đoạn
   RCC->AHB1ENR |= (1 << 0);
@@ -136,19 +157,29 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (1)
-  {
+  while (1) {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
 
-	  for(int i = 0; i < 10;i++){
-		  Seg7_Print(i);
-		  HAL_Delay(1000);
-	  }
-//	  GPIOC->BSRR |= (1 << 13);
+	 Seg7_Print(count);
+	 HAL_Delay(500);
+
+	 if ( count == 0 || count == 9 ) {
+		 GPIOC->BSRR |= (1 << 13); // MỞ ĐÈN !!!
+	 }
+	 else {
+
+		 GPIOC->BSRR |= (1 << (13+16)); // TẮT ĐÈN !
+	 }
+
+//	  for(int i = 0; i < 10;i++){
+//		  Seg7_Print(i);
+//		  HAL_Delay(1000);
+//	  }
+//	  GPIOC->BSRR |= (1 << 13); // MỞ ĐÈN !!!
 //	  HAL_Delay(1000);
-//	  GPIOC->BSRR |= (1 << (13+16));
+//	  GPIOC->BSRR |= (1 << (13+16)); // TẮT ĐÈN !!!
 //	  HAL_Delay(1000);
   }
   /* USER CODE END 3 */
@@ -158,8 +189,7 @@ int main(void)
   * @brief System Clock Configuration
   * @retval None
   */
-void SystemClock_Config(void)
-{
+void SystemClock_Config(void){
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
   RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
 
@@ -204,8 +234,7 @@ void SystemClock_Config(void)
   * @param None
   * @retval None
   */
-static void MX_GPIO_Init(void)
-{
+static void MX_GPIO_Init(void){
   /* USER CODE BEGIN MX_GPIO_Init_1 */
 
   /* USER CODE END MX_GPIO_Init_1 */
@@ -220,24 +249,35 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-void EXTI3_IRQHandler (void) // dùng EXTI3 nên là ye
-{
+void EXTI3_IRQHandler (void) { // dùng EXTI3 nên là ye
     // place your code
-	if (EXTI->PR & (1 << 3))  // 12.3.6 trong datasheet
-	    {
+	if (EXTI->PR & (1 << 3)) { // 12.3.6 trong datasheet
 	        EXTI->PR |= (1 << 3);  // xóa cờ pending ( xóa là ghi 1 vô bit đó)
-	        GPIOC->ODR ^= (1 << 13); // bật tắt đèn ( dấu mũ là toggle)
+	        count = count + 1;
+	        if ( count > 9){
+	        	count = 9;
+	        }
 	    }
 }
 
-void Seg7_Print(uint8_t num)
-{
-    uint8_t code = seg_code[num];
-    // Clear 7 bit (PA0..PA6)
-    GPIOA->ODR &= ~(0x7F);
+void EXTI2_IRQHandler (void) { // dùng EXTI2 nên là ye
+    // place your code
+	if (EXTI->PR & (1 << 2)) { // 12.3.6 trong datasheet
+	        EXTI->PR |= (1 << 2);  // xóa cờ pending ( xóa là ghi 1 vô bit đó)
+	        count = count - 1;
+	        if ( count < 0){
+	        	count = 0;
+	        }
+	    }
+}
 
+void Seg7_Print(uint8_t num) {  //convert từ số thập phân sang LED 7 đoạn
+
+    uint8_t code = seg_code[num];
+
+    GPIOA->ODR &= ~(0x7F); // Clear 7 bit (PA0..PA6) ( clear về 0)
     // Ghi mã segment
-    GPIOA->ODR |= (code & 0x7F);
+    GPIOA->ODR |= (code & 0x7F);//filter ra
 }
 /* USER CODE END 4 */
 
