@@ -51,9 +51,9 @@ static void MX_GPIO_Init(void);
 /* USER CODE BEGIN PFP */
 //void Seg7_Print(uint8_t num);
 
-void USART2_sendchar(uint8_t c);
-void UART2_SendString (char *string);
-uint8_t UART2_GetChar(void);
+void USART1_sendchar(uint8_t c);
+void UART1_SendString (char *string);
+uint8_t UART1_GetChar(void);
 
 /* USER CODE END PFP */
 
@@ -146,40 +146,39 @@ int main(void)
 
 
    //LED 7 đoạn
-//  RCC->AHB1ENR |= (1 << 0);
-//  GPIOA->MODER &= ~(0x3FFF);     // clear PA0..PA6
-//  GPIOA->MODER |=  (0x1555);     // set to output mode
-//
-//
-//  // Output push-pull
-//  GPIOA->OTYPER &= ~(0x7F);
-//  // Low speed (cho LED, không cần nhanh)
-//  GPIOA->OSPEEDR &= ~(0x3FFF);
-//  // No pull-up, no pull-down
-//  GPIOA->PUPDR &= ~(0x3FFF);
+  RCC->AHB1ENR |= (1 << 0);
+  GPIOA->MODER &= ~(0x3FFF);     // clear PA0..PA6
+  GPIOA->MODER |=  (0x1555);     // set to output mode
+
+  // Output push-pull
+  GPIOA->OTYPER &= ~(0x7F);
+  // Low speed (cho LED, không cần nhanh)
+  GPIOA->OSPEEDR &= ~(0x3FFF);
+  // No pull-up, no pull-down
+  GPIOA->PUPDR &= ~(0x3FFF);
 
 
   // 1. Enable the USART CLOCK and GPIO CLOCK
-	RCC->APB1ENR |= (1<<17); // Enable UART2 CLOCK
+	RCC->APB2ENR |= (1<<4); // Enable UART1 CLOCK
 	RCC->AHB1ENR |= (1<<0); // Enable GPIOA CLOCK
   // 2. Configure the USART PINs for Alternate Function
-	GPIOA->MODER |= (2 << (2*2)); // Bits (5:4)= 1:0 --> Alternate Function for Pin PA2
-	GPIOA->MODER |= (2 << (2*3)); // Bits (7:6)= 1:0 --> Alternate Function for Pin PA3
+	GPIOA->MODER |= (2 << (2*9)); // Alternate Function for Pin PA2
+	GPIOA->MODER |= (2 << (2*10)); // Alternate Function for Pin PA3
 
-	GPIOA->OSPEEDR |= (3 << (2*2))|(3 << (2*3)); // Bits (5:4) = 1:1 and Bits (7:6) =1:1 => High speed for PIN PA2 and PIN PA3
+	GPIOA->OSPEEDR |= (3 << (2*9))|(3 << (2*10)); // => High speed for PIN PA9 and PIN PA10
 
-	GPIOA->AFR[0] |= (7<<8); // Bytes (11:10:9:8) = 0:1:1:1 --> AF7 Alternate function for UART2 at Pin PA2 (trang 272/1751)
-	GPIOA->AFR[0] |= (7<<12); // Bytes (15:14:13:12) = 0:1:1:1 --> AF7 Alternate function for UART2 at Pin PA3 (trang 272/1751)
+	GPIOA->AFR[1] |= (7<<(4*1)); //  AF7 Alternate function for UART1 at Pin PA9 (trang 286/1751)
+	GPIOA->AFR[1] |= (7<< (4*2)); // AF7 Alternate function for UART1 at Pin PA10 (trang 286/1751)
   // 3. Enable the USART by writing the UE bit in USART_CR1 register to 1
-	USART2->CR1 = 0x00 ; // clear all
-	USART2->CR1 |= (1<<13) ; // UE = 1 ... Enable USART
+	USART1->CR1 = 0x00 ; // clear all
+	USART1->CR1 |= (1<<13) ; // UE = 1 ... Enable USART
   // 4. Program the M bit in USART_CR1 to define the word length
-	USART2->CR1 &= ~(1<<12); // M=0; 8 bit word length
+	USART1->CR1 &= ~(1<<12); // M=0; 8 bit word length
 	//5. Select the desired baudrate using USART_BRR register
-	USART2->BRR = (6<<0)|(17<<4); // Baud rate 57600 , PCLK1 at 16MHz
+	USART1->BRR = (6<<0)|(17<<4); // Baud rate 57600 , PCLK1 at 16MHz
 	// 6. Enable the Transmitter/Receiver by Setting the TE and RE bits in USART_CR1 Register
-	USART2->CR1 |= (1<<2); // RE=1 Enable Receiver
-	USART2->CR1 |= (1<<3); // TE=1 Enable Transmitter
+	USART1->CR1 |= (1<<2); // RE=1 Enable Receiver
+	USART1->CR1 |= (1<<3); // TE=1 Enable Transmitter
 
   /* USER CODE END 2 */
 
@@ -189,13 +188,13 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	  data_receive = UART2_GetChar();
-	  if (data_receive == 'I') {
-		  GPIOC->BSRR |= (1 << 13);
-	  }
-	  if (data_receive == 'O'){
-		  GPIOC->BSRR |= (1 << (13+16));
-	  }
+	  data_receive = UART1_GetChar();
+
+	  count = data_receive - '0';  //chuyển từ ASCII qua số nguyên
+
+	  Seg7_Print(count);
+
+	  HAL_Delay(200);
 
 
 //	 Seg7_Print(count);
@@ -280,51 +279,51 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-//void EXTI3_IRQHandler (void) { // dùng EXTI3 nên là ye
-//    // place your code
-//	if (EXTI->PR & (1 << 3)) { // 12.3.6 trong datasheet
-//	        EXTI->PR |= (1 << 3);  // xóa cờ pending ( xóa là ghi 1 vô bit đó)
-//	        count = count + 1;
-//	        if ( count > 9){
-//	        	count = 9;
-//	        }
-//	    }
-//}
-//
-//void EXTI2_IRQHandler (void) { // dùng EXTI2 nên là ye
-//    // place your code
-//	if (EXTI->PR & (1 << 2)) { // 12.3.6 trong datasheet
-//	        EXTI->PR |= (1 << 2);  // xóa cờ pending ( xóa là ghi 1 vô bit đó)
-//	        count = count - 1;
-//	        if ( count < 0){
-//	        	count = 0;
-//	        }
-//	    }
-//}
+void EXTI3_IRQHandler (void) { // dùng EXTI3 nên là ye
+    // place your code
+	if (EXTI->PR & (1 << 3)) { // 12.3.6 trong datasheet
+	        EXTI->PR |= (1 << 3);  // xóa cờ pending ( xóa là ghi 1 vô bit đó)
+	        count = count + 1;
+	        if ( count > 9){
+	        	count = 9;
+	        }
+	    }
+}
 
-//void Seg7_Print(uint8_t num) {  //convert từ số thập phân sang LED 7 đoạn
-//
-//    uint8_t code = seg_code[num];
-//
-//    GPIOA->ODR &= ~(0x7F); // Clear 7 bit (PA0..PA6) ( clear về 0)
-//    // Ghi mã segment
-//    GPIOA->ODR |= (code & 0x7F);//filter ra
-//}
+void EXTI2_IRQHandler (void) { // dùng EXTI2 nên là ye
+    // place your code
+	if (EXTI->PR & (1 << 2)) { // 12.3.6 trong datasheet
+	        EXTI->PR |= (1 << 2);  // xóa cờ pending ( xóa là ghi 1 vô bit đó)
+	        count = count - 1;
+	        if ( count < 0){
+	        	count = 0;
+	        }
+	    }
+}
+
+void Seg7_Print(uint8_t num) {  //convert từ số thập phân sang LED 7 đoạn
+
+    uint8_t code = seg_code[num];
+
+    GPIOA->ODR &= ~(0x7F); // Clear 7 bit (PA0..PA6) ( clear về 0)
+    // Ghi mã segment
+    GPIOA->ODR |= (code & 0x7F);//filter ra
+}
 
 //UART
-void USART2_sendchar(uint8_t c){
-	USART2->DR = c; // load data into DR register
-	while (!(USART2->SR&(1<<6)));// Wait for TC to SET .. This indicates that the data has been transmitted
+void USART1_sendchar(uint8_t c){
+	USART1->DR = c; // load data into DR register
+	while (!(USART1->SR&(1<<6)));// Wait for TC to SET .. This indicates that the data has been transmitted
 }
 
-void UART2_SendString (char *string) {
-	while(*string) USART2_sendchar(*string++);
+void UART1_SendString (char *string) {
+	while(*string) USART1_sendchar(*string++);
 }
 
-uint8_t UART2_GetChar(void){
+uint8_t UART1_GetChar(void){
 	uint8_t temp;
-	while(!(USART2->SR&(1<<5))); // wait for RXNE bit to set
-	temp = USART2->DR; // Read the data . This clears the RXNE also
+	while(!(USART1->SR&(1<<5))); // wait for RXNE bit to set
+	temp = USART1->DR; // Read the data . This clears the RXNE also
 	return temp;
 }
 /* USER CODE END 4 */

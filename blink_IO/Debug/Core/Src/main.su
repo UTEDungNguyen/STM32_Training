@@ -1,7 +1,10 @@
 ../Core/Src/main.c:71:5:main	8	static
-../Core/Src/main.c:225:6:SystemClock_Config	88	static
-../Core/Src/main.c:267:13:MX_GPIO_Init	16	static
-../Core/Src/main.c:315:6:USART2_sendchar	16	static
-../Core/Src/main.c:320:6:UART2_SendString	16	static
-../Core/Src/main.c:324:9:UART2_GetChar	16	static
-../Core/Src/main.c:336:6:Error_Handler	4	static,ignoring_inline_asm
+../Core/Src/main.c:224:6:SystemClock_Config	88	static
+../Core/Src/main.c:266:13:MX_GPIO_Init	16	static
+../Core/Src/main.c:282:6:EXTI3_IRQHandler	4	static
+../Core/Src/main.c:293:6:EXTI2_IRQHandler	4	static
+../Core/Src/main.c:304:6:Seg7_Print	24	static
+../Core/Src/main.c:314:6:USART1_sendchar	16	static
+../Core/Src/main.c:319:6:UART1_SendString	16	static
+../Core/Src/main.c:323:9:UART1_GetChar	16	static
+../Core/Src/main.c:335:6:Error_Handler	4	static,ignoring_inline_asm
